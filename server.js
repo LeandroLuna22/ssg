@@ -53,6 +53,41 @@ app.post('/cadastrar', async (req, res) => {
     }
 });
 
+// ------------------------
+// Rota de login
+// ------------------------
+app.post('/login', async (req, res) => {
+    const { nome, senha } = req.body;
+
+    if (!nome || !senha) {
+        return res.status(400).json({ mensagem: 'Usuário e senha são obrigatórios.' });
+    }
+
+    try {
+        // Busca usuário pelo nome
+        const [rows] = await db.query('SELECT * FROM usuarios WHERE nome = ?', [nome]);
+
+        if (rows.length === 0) {
+            return res.status(401).json({ mensagem: 'Usuário ou senha incorretos.' });
+        }
+
+        const usuario = rows[0];
+
+        // Compara senha digitada com hash no banco
+        const senhaValida = await bcrypt.compare(senha, usuario.senha);
+
+        if (!senhaValida) {
+            return res.status(401).json({ mensagem: 'Usuário ou senha incorretos.' });
+        }
+
+        // Login correto
+        res.json({ sucesso: true, mensagem: 'Login realizado com sucesso!' });
+    } catch (error) {
+        console.error('Erro ao fazer login:', error);
+        res.status(500).json({ mensagem: 'Erro no servidor.' });
+    }
+});
+
 // Iniciar servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
