@@ -67,3 +67,36 @@ button {
     margin-bottom: 5px;
     text-align: center;
 }
+
+.logo {
+    max-width: 100px;
+    margin-top: 0px;
+    padding-bottom: 10px;
+}
+
+.logo-menu {
+    width: 100px;
+    margin: 30px;
+    margin-left: 100px;
+}
+
+.divisao1 {
+    border: solid 1px #264f80e1;
+    max-width: 100%;
+    margin-bottom: 15px;
+}
+
+.menu-principal {
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.item-menu {
+    display: flex;
+    padding: 30px 10px 0px 35px;
+    text-decoration: none;
+    margin-left: 50px;
+}
+
