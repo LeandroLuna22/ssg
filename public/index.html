@@ -7,25 +7,99 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
+    <!-- Logo do sistema -->
     <img class="logo-menu" src="img/logo.png" alt="Logo SisGO">
+
     <div class="divisao1"></div>
-        <div class="home-container"></div>
-        <nav class="menu-principal">
-                
-                <a href="visualizar-notas.html" class="item-menu">Visualizar Notas</a>
-                <div class="divisao"></div>
-                <a href="visualizar-ordens.html" class="item-menu">Visualizar Ordens</a>
-                <div class="divisao"></div>
-                <a href="criar-nota.html" class="item-menu">Criar Nota</a>
-                <div class="divisao"></div>
-                <a href="abrir-ordem.html" class="item-menu">Abrir Ordem</a>
-                <div class="divisao"></div>
-                <a href="cadastro.html" class="item-menu">Cadastrar Usuário</a>
-                <div class="divisao"></div>
-                <a href="sobre.html" class="item-menu">Sobre</a>
-                <div class="divisao"></div>
-                <a href="login.html" class="item-menu">Sair</a>
-        </nav>
-    </div>
+    <div class="home-container"></div>
+
+    <!-- =========================
+         MENU PRINCIPAL
+         ========================= -->
+    <nav class="menu-principal">
+
+        <!-- Itens visíveis para TODOS (usuário e admin) -->
+        <a href="visualizar-notas.html" class="item-menu comum">
+            Visualizar Notas
+        </a>
+        <div class="divisao comum"></div>
+
+        <a href="visualizar-ordens.html" class="item-menu comum">
+            Visualizar Ordens
+        </a>
+        <div class="divisao comum"></div>
+
+        <a href="criar-nota.html" class="item-menu comum">
+            Criar Nota
+        </a>
+        <div class="divisao comum"></div>
+
+        <!-- Itens EXCLUSIVOS do ADMINISTRADOR -->
+        <a href="abrir-ordem.html" class="item-menu admin">
+            Abrir Ordem
+        </a>
+        <div class="divisao admin"></div>
+
+        <a href="cadastro.html" class="item-menu admin">
+            Cadastrar Usuário
+        </a>
+        <div class="divisao admin"></div>
+
+        <!-- Itens visíveis para TODOS -->
+        <a href="sobre.html" class="item-menu comum">
+            Sobre
+        </a>
+        <div class="divisao comum"></div>
+
+        <a href="login.html" class="item-menu comum">
+            Sair
+        </a>
+
+    </nav>
+
+    <!-- =========================
+         SCRIPT DE CONTROLE DE ACESSO
+         ========================= -->
+    <script>
+        /*
+          Este script:
+          - Consulta o backend (/user)
+          - Identifica se o usuário é admin ou comum
+          - Controla a visualização do menu
+          - Redireciona para login se não estiver autenticado
+        */
+
+        fetch('/user')
+            .then(res => {
+                // Se não estiver logado, backend retorna erro
+                if (!res.ok) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                return res.json();
+            })
+            .then(user => {
+
+                // Esconde todos os itens primeiro (segurança visual)
+                document.querySelectorAll('.admin, .comum')
+                    .forEach(el => el.style.display = 'none');
+
+                // Itens comuns aparecem para todos
+                document.querySelectorAll('.comum')
+                    .forEach(el => el.style.display = 'block');
+
+                // Itens administrativos só para admin
+                if (user.tipo === 'admin') {
+                    document.querySelectorAll('.admin')
+                        .forEach(el => el.style.display = 'block');
+                }
+            })
+            .catch(() => {
+                // Qualquer erro redireciona para login
+                window.location.href = 'login.html';
+            });
+    </script>
+
 </body>
 </html>
