@@ -1,11 +1,63 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Criar Nota</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <h2>Criar Nota</h2>
+
+    <!-- Cabeçalho com logo -->
+    <header>
+        <img class="logo-menu" src="img/logo.png" alt="Logo SisGO">
+    </header>
+
+    <!-- =========================
+         FORMULÁRIO DE CRIAÇÃO DE NOTA
+         ========================= -->
+    <form id="form-nota">
+
+        <!-- Título da nota -->
+        <h3>Título da Nota</h3>
+        <input 
+            type="text" 
+            id="titulo-nota" 
+            name="titulo"
+            placeholder="Título da nota"
+            required
+        >
+
+        <div class="divisao"></div>
+
+        <!-- Descrição da nota -->
+        <h3>Descrição</h3>
+        <div class="caixa-descricao">
+            <textarea 
+                id="descricao-nota"
+                name="descricao"
+                placeholder="Descreva o problema ou solicitação..."
+                required
+            ></textarea>
+        </div>
+
+        <div class="divisao"></div>
+
+        <!-- Anexo de imagem (opcional) -->
+        <h3>Anexar Imagem</h3>
+        <input 
+            type="file" 
+            id="imagem-nota"
+            name="imagem"
+            accept="image/*"
+        >
+
+        <div class="divisao"></div>
+
+        <!-- Botão de envio -->
+        <button type="submit" class="btn-enviar">
+            Enviar Nota
+        </button>
+    </form>
 </body>
 </html>

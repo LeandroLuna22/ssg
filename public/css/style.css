@@ -80,6 +80,12 @@ button {
     margin-left: 100px;
 }
 
+.divisao {
+    border: solid 1px #264f8060;
+    max-width: 400px;
+    margin-left: 50px;
+}
+
 .divisao1 {
     border: solid 1px #264f80e1;
     max-width: 100%;
