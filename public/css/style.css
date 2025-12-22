@@ -54,12 +54,29 @@ h2 {
     margin: 5px 0;
 }
 
+#formNota {
+    max-width: 100%;
+    text-align: center;
+    padding: 5px;
+    margin: 0 auto;
+}
+
 #tipo {
     display: block;
 }
 
 button {
     width: 100%;
+    background-color: var(--cor3);
+    color: var(--cor0);
+    padding: 5px;
+    margin: 20px 0;
+    margin-bottom: 5px;
+    text-align: center;
+}
+
+.btn-enviar {
+    width: 50%;
     background-color: var(--cor3);
     color: var(--cor0);
     padding: 5px;
