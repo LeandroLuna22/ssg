@@ -150,6 +150,60 @@ app.get('/notas', autenticado, async (req, res) => {
 });
 
 // ======================================================
+// 📄 BUSCAR NOTA POR ID
+// ======================================================
+app.get('/notas/:id', autenticado, async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [rows] = await db.query(`
+            SELECT notas.*, usuarios.nome
+            FROM notas
+            JOIN usuarios ON usuarios.id = notas.usuario_id
+            WHERE notas.id = ?
+        `, [id]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ mensagem: 'Nota não encontrada' });
+        }
+
+        res.json(rows[0]);
+
+    } catch (error) {
+        console.error('Erro ao buscar nota:', error);
+        res.status(500).json({ mensagem: 'Erro ao buscar nota' });
+    }
+});
+
+// ======================================================
+// 🔄 ATUALIZAR STATUS DA NOTA (ADMIN)
+// ======================================================
+app.put('/notas/:id/status', autenticado, somenteAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const statusValidos = ['aberta', 'em andamento', 'concluida'];
+
+    if (!statusValidos.includes(status)) {
+        return res.status(400).json({ mensagem: 'Status inválido' });
+    }
+
+    try {
+        await db.query(
+            'UPDATE notas SET status = ? WHERE id = ?',
+            [status, id]
+        );
+
+        res.json({ mensagem: 'Status atualizado com sucesso' });
+
+    } catch (error) {
+        console.error('Erro ao atualizar status:', error);
+        res.status(500).json({ mensagem: 'Erro ao atualizar status' });
+    }
+});
+
+
+// ======================================================
 // 📝 CADASTRO (ADMIN)
 // ======================================================
 app.post('/cadastrar', autenticado, somenteAdmin, async (req, res) => {

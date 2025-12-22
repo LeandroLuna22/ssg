@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const notas = await response.json();
-        const container = document.getElementById('lista-notas');
+        const container = document.getElementById('listaNotas');
 
         if (notas.length === 0) {
             container.innerHTML = '<p>Nenhuma nota encontrada.</p>';
@@ -31,6 +31,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             container.appendChild(div);
         });
+
+        fetch('/notas')
+    .then(res => res.json())
+    .then(notas => {
+        const lista = document.getElementById('listaNotas');
+        lista.innerHTML = '';
+
+        notas.forEach(nota => {
+            const li = document.createElement('li');
+            li.className = 'nota-item';
+            li.innerHTML = `
+                <strong>${nota.titulo}</strong>
+                <span class="status ${nota.status}">${nota.status}</span>
+                <small>${new Date(nota.criada_em).toLocaleDateString()}</small>
+            `;
+
+            li.onclick = () => {
+                window.location.href = `nota.html?id=${nota.id}`;
+            };
+
+            lista.appendChild(li);
+        });
+    });
+
 
     } catch (error) {
         console.error('Erro:', error);

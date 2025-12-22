@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Nota</title>
+</head>
+<body>
+
+<h2 id="titulo"></h2>
+<p id="descricao"></p>
+
+<img id="imagem" style="max-width:300px; display:none">
+
+<p><strong>Status:</strong> <span id="status"></span></p>
+<p><strong>Autor:</strong> <span id="autor"></span></p>
+
+<div id="adminArea" style="display:none">
+    <label>Status:</label>
+    <select id="novoStatus">
+        <option value="aberta">Aberta</option>
+        <option value="em andamento">Em andamento</option>
+        <option value="concluida">Encerrada</option>
+    </select>
+    <button onclick="atualizarStatus()">Atualizar</button>
+</div>
+
+<script src="js/nota.js"></script>
+</body>
+</html>
