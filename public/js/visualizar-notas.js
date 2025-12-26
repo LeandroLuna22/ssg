@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', async () => {
-
     try {
         const response = await fetch('/notas');
 
@@ -9,54 +8,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const notas = await response.json();
-        const container = document.getElementById('listaNotas');
+        const lista = document.getElementById('listaNotas');
+
+        lista.innerHTML = '';
 
         if (notas.length === 0) {
-            container.innerHTML = '<p>Nenhuma nota encontrada.</p>';
+            lista.innerHTML = '<li>Nenhuma nota encontrada.</li>';
             return;
         }
 
         notas.forEach(nota => {
-            const div = document.createElement('div');
-            div.classList.add('nota');
-
-            div.innerHTML = `
-                <h3>${nota.titulo}</h3>
-                <p>${nota.descricao}</p>
-                <small>Status: ${nota.status}</small><br>
-                <small>Criada em: ${new Date(nota.criada_em).toLocaleString()}</small>
-                ${nota.imagem ? `<img src="/uploads/${nota.imagem}" width="200">` : ''}
-                <hr>
-            `;
-
-            container.appendChild(div);
-        });
-
-        fetch('/notas')
-    .then(res => res.json())
-    .then(notas => {
-        const lista = document.getElementById('listaNotas');
-        lista.innerHTML = '';
-
-        notas.forEach(nota => {
             const li = document.createElement('li');
             li.className = 'nota-item';
+
             li.innerHTML = `
-                <strong>${nota.titulo}</strong>
+                <div class="nota-info">
+                    <strong>${nota.titulo}</strong>
+                    <small>${new Date(nota.criada_em).toLocaleDateString()}</small>
+                </div>
                 <span class="status ${nota.status}">${nota.status}</span>
-                <small>${new Date(nota.criada_em).toLocaleDateString()}</small>
             `;
 
-            li.onclick = () => {
+            li.addEventListener('click', () => {
                 window.location.href = `nota.html?id=${nota.id}`;
-            };
+            });
 
             lista.appendChild(li);
         });
-    });
-
 
     } catch (error) {
-        console.error('Erro:', error);
+        console.error('Erro ao carregar notas:', error);
     }
 });
