@@ -148,7 +148,7 @@ button {
 }
 
 .lista-notas li:hover {
-    background: #f5f5f5;
+    background: rgb(221, 221, 226);
 }
 
 .titulo-nota {
@@ -157,6 +157,5 @@ button {
 
 .status {
     font-size: 0.85rem;
-    color: #666;
+    color: var(--cor3);
 }
-
