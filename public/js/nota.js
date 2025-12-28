@@ -1,42 +1,99 @@
 const params = new URLSearchParams(window.location.search);
 const id = params.get('id');
 
+// 🔹 VERIFICA SE É ADMIN
+fetch('/user')
+  .then(res => res.json())
+  .then(user => {
+    if (user.tipo === 'admin') {
+      document.getElementById('adminArea').style.display = 'block';
+
+      // 🔹 VERIFICA SE JÁ EXISTE ORDEM PARA A NOTA
+      fetch(`/ordens/nota/${id}`)
+        .then(res => res.json())
+        .then(ordem => {
+          const area = document.getElementById('ordemArea');
+
+          if (!ordem) {
+            // NÃO existe ordem → mostra botão
+            area.innerHTML = `
+              <button onclick="abrirOrdem()">
+                Abrir Ordem de Serviço
+              </button>
+            `;
+          } else {
+            // Já existe ordem
+            area.innerHTML = `
+              <p><strong>Ordem já aberta</strong></p>
+              <p>Descrição: ${ordem.descricao}</p>
+              <p>Administrador: ${ordem.admin_nome}</p>
+            `;
+          }
+        });
+    }
+  });
+
+// 🔹 CARREGA NOTA
 fetch(`/notas/${id}`)
-    .then(res => res.json())
-    .then(nota => {
-        document.getElementById('titulo').innerText = nota.titulo;
-        document.getElementById('descricao').innerText = nota.descricao;
-        document.getElementById('status').innerText = nota.status;
-        document.getElementById('autor').innerText = nota.nome;
+  .then(res => res.json())
+  .then(nota => {
+    document.getElementById('titulo').innerText = nota.titulo;
+    document.getElementById('descricao').innerText = nota.descricao;
+    document.getElementById('status').innerText = nota.status;
+    document.getElementById('autor').innerText = nota.nome;
 
-        if (nota.imagem) {
-            const img = document.getElementById('imagem');
-            img.src = `/uploads/${nota.imagem}`;
-            img.style.display = 'block';
-        }
+    if (nota.imagem) {
+      const img = document.getElementById('imagem');
+      img.src = `/uploads/${nota.imagem}`;
+      img.style.display = 'block';
+    }
 
-        // verifica se é admin
-        fetch('/user')
-            .then(res => res.json())
-            .then(user => {
-                if (user.tipo === 'admin') {
-                    document.getElementById('adminArea').style.display = 'block';
-                    document.getElementById('novoStatus').value = nota.status;
-                }
-            });
-    });
+    const select = document.getElementById('novoStatus');
+    if (select) select.value = nota.status;
+  });
 
-function atualizarStatus() {
+// 🔹 ABRIR ORDEM
+function abrirOrdem() {
+  const descricao = prompt('Descreva a ordem de serviço');
+
+  if (!descricao) return;
+
+  fetch('/ordens', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      nota_id: id,
+      descricao
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    alert(data.mensagem);
+    location.reload();
+  });
+}
+
+const btnAtualizar = document.getElementById('btnAtualizarStatus');
+
+if (btnAtualizar) {
+  btnAtualizar.addEventListener('click', () => {
     const novoStatus = document.getElementById('novoStatus').value;
 
     fetch(`/notas/${id}/status`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: novoStatus })
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: novoStatus })
     })
     .then(res => res.json())
     .then(data => {
-        alert(data.mensagem);
-        location.reload();
+      alert(data.mensagem);
+      location.reload();
+    })
+    .catch(err => {
+      console.error(err);
+      alert('Erro ao atualizar status');
     });
+  });
 }
+
+

@@ -202,6 +202,64 @@ app.put('/notas/:id/status', autenticado, somenteAdmin, async (req, res) => {
     }
 });
 
+//🔹 BUSCAR ORDEM POR NOTA (nota.html usa isso)
+
+app.get('/ordens/nota/:notaId', autenticado, async (req, res) => {
+    const { notaId } = req.params;
+
+    try {
+        const [rows] = await db.query(
+            `SELECT os.*, u.nome AS admin_nome
+             FROM ordens_servico os
+             JOIN usuarios u ON u.id = os.admin_id
+             WHERE os.nota_id = ?`,
+            [notaId]
+        );
+
+        res.json(rows[0] || null);
+
+    } catch (error) {
+        console.error('Erro ao buscar ordem:', error);
+        res.status(500).json({ mensagem: 'Erro ao buscar ordem' });
+    }
+});
+
+//🔹 CRIAR ORDEM (ADMIN)
+
+app.post('/ordens', autenticado, somenteAdmin, async (req, res) => {
+    const { nota_id, descricao } = req.body;
+    const adminId = req.session.usuario.id;
+
+    if (!nota_id || !descricao) {
+        return res.status(400).json({ mensagem: 'Dados obrigatórios' });
+    }
+
+    try {
+        // 🔒 Impede duplicidade
+        const [existe] = await db.query(
+            'SELECT id FROM ordens_servico WHERE nota_id = ?',
+            [nota_id]
+        );
+
+        if (existe.length > 0) {
+            return res.status(400).json({ mensagem: 'Esta nota já possui ordem aberta' });
+        }
+
+        await db.query(
+            `INSERT INTO ordens_servico (nota_id, admin_id, descricao)
+             VALUES (?, ?, ?)`,
+            [nota_id, adminId, descricao]
+        );
+
+        res.json({ mensagem: 'Ordem de serviço criada com sucesso' });
+
+    } catch (error) {
+        console.error('Erro ao criar ordem:', error);
+        res.status(500).json({ mensagem: 'Erro ao criar ordem' });
+    }
+});
+
+
 
 // ======================================================
 // 📝 CADASTRO (ADMIN)
