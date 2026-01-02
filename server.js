@@ -259,6 +259,31 @@ app.post('/ordens', autenticado, somenteAdmin, async (req, res) => {
     }
 });
 
+// ======================================================
+// 📝 VISUALIZAR ORDENS
+// ======================================================
+app.get('/ordens', autenticado, async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT 
+        os.id,
+        os.descricao,
+        os.status,
+        os.created_at,
+        n.titulo AS nota_titulo,
+        u.nome AS admin_nome
+      FROM ordens_servico os
+      JOIN notas n ON n.id = os.nota_id
+      JOIN usuarios u ON u.id = os.admin_id
+      ORDER BY os.created_at DESC
+    `);
+
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: 'Erro ao buscar ordens' });
+  }
+});
 
 
 // ======================================================
