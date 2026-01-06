@@ -22,13 +22,14 @@ fetch('/user')
               </button>
             `;
           } else {
-            // Já existe ordem
-            area.innerHTML = `
-              <p><strong>Ordem já aberta</strong></p>
-              <p>Descrição: ${ordem.descricao}</p>
-              <p>Administrador: ${ordem.admin_nome}</p>
-            `;
-          }
+  area.innerHTML = `
+    <p><strong>Ordem já aberta</strong></p>
+    <button onclick="verOrdem(${ordem.id})">
+      Ver Ordem de Serviço
+    </button>
+  `;
+}
+
         });
     }
   });
@@ -94,6 +95,10 @@ if (btnAtualizar) {
       alert('Erro ao atualizar status');
     });
   });
+}
+
+function verOrdem(ordemId) {
+  window.location.href = `ordem.html?id=${ordemId}`;
 }
 
 

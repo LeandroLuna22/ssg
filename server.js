@@ -284,6 +284,35 @@ app.get('/ordens', autenticado, async (req, res) => {
     res.status(500).json({ erro: 'Erro ao buscar ordens' });
   }
 });
+//------------------------------------------------------------
+app.get('/ordens/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [rows] = await db.query(`
+      SELECT 
+        o.id,
+        o.descricao,
+        o.status,
+        o.nota_id,
+        u.nome AS admin_nome
+      FROM ordens_servico o
+      LEFT JOIN usuarios u ON o.admin_id = u.id
+      WHERE o.id = ?
+    `, [id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ mensagem: 'Ordem não encontrada' });
+    }
+
+    res.json(rows[0]);
+
+  } catch (error) {
+    console.error('ERRO AO BUSCAR ORDEM:', error);
+    res.status(500).json({ erro: 'Erro interno ao buscar ordem' });
+  }
+});
+
 
 
 // ======================================================
