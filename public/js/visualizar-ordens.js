@@ -14,15 +14,18 @@ fetch('/ordens')
       item.classList.add('item-lista');
 
       item.innerHTML = `
-        <h3>Ordem #${ordem.id}</h3>
-        <p><strong>Status:</strong> ${ordem.status}</p>
-        <p><strong>Descrição:</strong> ${ordem.descricao}</p>
-        <p><strong>Nota:</strong> ${ordem.titulo_nota}</p>
-        <p><strong>Administrador:</strong> ${ordem.admin_nome}</p>
+        <div class="ordem-info">
+          <strong>${ordem.nota_titulo}</strong>
+          <small>${new Date(ordem.created_at).toLocaleDateString()}</small>
+        </div>
 
-        <a href="nota.html?id=${ordem.nota_id}">
-          Ver Nota
-        </a>
+        <p>${ordem.descricao}</p>
+
+        <span class="status ${ordem.status}">
+          ${ordem.status}
+        </span>
+
+        <small>Administrador: ${ordem.admin_nome}</small>
       `;
 
       lista.appendChild(item);
@@ -32,3 +35,4 @@ fetch('/ordens')
     console.error(err);
     alert('Erro ao carregar ordens de serviço');
   });
+
