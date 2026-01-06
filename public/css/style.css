@@ -159,3 +159,40 @@ button {
     font-size: 0.85rem;
     color: var(--cor3);
 }
+
+.ordem-item {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  padding: 10px;
+}
+
+.ordem-header {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  cursor: pointer;
+  align-items: center;
+}
+
+.ordem-header strong {
+  font-size: 16px;
+}
+
+.ordem-acoes {
+  margin-top: 10px;
+}
+
+.ordem-detalhes {
+  margin-top: 10px;
+}
+
+.ordem-imagem {
+  max-width: 300px;
+  margin-top: 10px;
+  border-radius: 4px;
+}
+
+.status.aberta { color: orange; }
+.status.em\ andamento { color: blue; }
+.status.concluida { color: green; }

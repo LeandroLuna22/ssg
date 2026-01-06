@@ -271,6 +271,7 @@ app.get('/ordens', autenticado, async (req, res) => {
         os.status,
         os.created_at,
         n.titulo AS nota_titulo,
+        n.imagem,
         u.nome AS admin_nome
       FROM ordens_servico os
       JOIN notas n ON n.id = os.nota_id
@@ -313,6 +314,41 @@ app.get('/ordens/:id', async (req, res) => {
   }
 });
 
+// 🔄 ATUALIZAR STATUS DA ORDEM (ADMIN)
+app.put('/ordens/:id/status', autenticado, somenteAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const statusValidos = ['aberta', 'em andamento', 'concluida'];
+
+    if (!statusValidos.includes(status)) {
+        return res.status(400).json({ mensagem: 'Status inválido' });
+    }
+
+    try {
+        // Atualiza status da ordem
+        await db.query(
+            'UPDATE ordens_servico SET status = ? WHERE id = ?',
+            [status, id]
+        );
+
+        // 🔗 SE A ORDEM FOR CONCLUÍDA → FECHA A NOTA
+        if (status === 'concluida') {
+            await db.query(`
+                UPDATE notas n
+                JOIN ordens_servico os ON os.nota_id = n.id
+                SET n.status = 'concluida'
+                WHERE os.id = ?
+            `, [id]);
+        }
+
+        res.json({ mensagem: 'Status da ordem atualizado com sucesso' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ mensagem: 'Erro ao atualizar ordem' });
+    }
+});
 
 
 // ======================================================
