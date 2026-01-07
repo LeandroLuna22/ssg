@@ -13,6 +13,38 @@
 
 <h2>Ordens de Serviço</h2>
 
+<!-- ================================ -->
+<!-- 🔎 FILTRO DE ORDENS DE SERVIÇO -->
+<!-- ================================ -->
+<form id="filtroOrdens" class="filtro-container">
+
+  <div class="filtro-campo">
+    <label for="status">Status</label>
+    <select id="status">
+      <option value="">Em aberto (padrão)</option>
+      <option value="aberta">Aberta</option>
+      <option value="em andamento">Em andamento</option>
+      <option value="encerrada">Encerrada</option>
+    </select>
+  </div>
+
+  <div class="filtro-campo">
+    <label for="inicio">Data inicial</label>
+    <input type="date" id="inicio">
+  </div>
+
+  <div class="filtro-campo">
+    <label for="fim">Data final</label>
+    <input type="date" id="fim">
+  </div>
+
+  <button type="submit" class="btn-filtrar">
+    Filtrar
+  </button>
+
+</form>
+
+
 <div id="listaOrdens" class="lista-ordens"></div>
 
 <a href="index.html" class="menu-principal">voltar</a>

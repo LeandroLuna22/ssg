@@ -115,32 +115,55 @@ app.post(
 );
 
 // ======================================================
-// 📋 LISTAR NOTAS
+// 📋 LISTAR NOTAS (com filtro por status e data)
 // ======================================================
 app.get('/notas', autenticado, async (req, res) => {
     try {
-        let query;
+        const { status, inicio, fim } = req.query;
 
-        if (req.session.usuario.tipo === 'admin') {
-            // 👑 Admin vê todas as notas
-            query = `
-                SELECT notas.*, usuarios.nome
-                FROM notas
-                JOIN usuarios ON usuarios.id = notas.usuario_id
-                ORDER BY criada_em DESC
-            `;
-        } else {
-            // 👤 Usuário comum vê todas as notas ABERTAS
-            query = `
-                SELECT notas.*, usuarios.nome
-                FROM notas
-                JOIN usuarios ON usuarios.id = notas.usuario_id
-                WHERE status = 'aberta'
-                ORDER BY criada_em DESC
-            `;
+        let filtros = [];
+        let valores = [];
+
+        // 👤 Usuário comum
+        if (req.session.usuario.tipo !== 'admin') {
+            if (status) {
+                filtros.push('notas.status = ?');
+                valores.push(status);
+            } else {
+                // padrão: só abertas
+                filtros.push("notas.status = 'aberta'");
+            }
+        } 
+        // 👑 Admin
+        else {
+            if (status) {
+                filtros.push('notas.status = ?');
+                valores.push(status);
+            }
         }
 
-        const [rows] = await db.query(query);
+        // 📅 Filtro por data
+        if (inicio) {
+            filtros.push('DATE(notas.criada_em) >= ?');
+            valores.push(inicio);
+        }
+
+        if (fim) {
+            filtros.push('DATE(notas.criada_em) <= ?');
+            valores.push(fim);
+        }
+
+        let where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : '';
+
+        const query = `
+            SELECT notas.*, usuarios.nome
+            FROM notas
+            JOIN usuarios ON usuarios.id = notas.usuario_id
+            ${where}
+            ORDER BY notas.criada_em DESC
+        `;
+
+        const [rows] = await db.query(query, valores);
         res.json(rows);
 
     } catch (error) {
@@ -260,11 +283,47 @@ app.post('/ordens', autenticado, somenteAdmin, async (req, res) => {
 });
 
 // ======================================================
-// 📝 VISUALIZAR ORDENS
+// 📝 VISUALIZAR ORDENS (com filtro por status e data)
 // ======================================================
 app.get('/ordens', autenticado, async (req, res) => {
   try {
-    const [rows] = await db.query(`
+    const { status, inicio, fim } = req.query;
+
+    let filtros = [];
+    let valores = [];
+
+    // 👤 Usuário comum
+    if (req.session.usuario.tipo !== 'admin') {
+      if (status) {
+        filtros.push('os.status = ?');
+        valores.push(status);
+      } else {
+        // padrão: não mostrar encerradas
+        filtros.push("os.status != 'encerrada'");
+      }
+    }
+    // 👑 Admin
+    else {
+      if (status) {
+        filtros.push('os.status = ?');
+        valores.push(status);
+      }
+    }
+
+    // 📅 Filtro por data
+    if (inicio) {
+      filtros.push('DATE(os.created_at) >= ?');
+      valores.push(inicio);
+    }
+
+    if (fim) {
+      filtros.push('DATE(os.created_at) <= ?');
+      valores.push(fim);
+    }
+
+    let where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : '';
+
+    const query = `
       SELECT 
         os.id,
         os.descricao,
@@ -276,15 +335,20 @@ app.get('/ordens', autenticado, async (req, res) => {
       FROM ordens_servico os
       JOIN notas n ON n.id = os.nota_id
       JOIN usuarios u ON u.id = os.admin_id
+      ${where}
       ORDER BY os.created_at DESC
-    `);
+    `;
 
+    const [rows] = await db.query(query, valores);
     res.json(rows);
+
   } catch (err) {
-    console.error(err);
+    console.error('Erro ao buscar ordens:', err);
     res.status(500).json({ erro: 'Erro ao buscar ordens' });
   }
 });
+
+
 //------------------------------------------------------------
 app.get('/ordens/:id', async (req, res) => {
   try {
