@@ -283,47 +283,38 @@ app.post('/ordens', autenticado, somenteAdmin, async (req, res) => {
 });
 
 // ======================================================
-// 📝 VISUALIZAR ORDENS (com filtro por status e data)
+// 📝 VISUALIZAR ORDENS (COM FILTRO)
 // ======================================================
 app.get('/ordens', autenticado, async (req, res) => {
   try {
     const { status, inicio, fim } = req.query;
 
-    let filtros = [];
-    let valores = [];
+    let where = [];
+    let params = [];
 
-    // 👤 Usuário comum
-    if (req.session.usuario.tipo !== 'admin') {
-      if (status) {
-        filtros.push('os.status = ?');
-        valores.push(status);
-      } else {
-        // padrão: não mostrar encerradas
-        filtros.push("os.status != 'encerrada'");
-      }
-    }
-    // 👑 Admin
-    else {
-      if (status) {
-        filtros.push('os.status = ?');
-        valores.push(status);
-      }
+    // 🔹 REGRA: encerradas só aparecem se filtrar
+    if (status) {
+      where.push('os.status = ?');
+      params.push(status);
+    } else {
+      where.push("os.status != 'concluida'");
     }
 
-    // 📅 Filtro por data
+    // 🔹 Filtro por data inicial
     if (inicio) {
-      filtros.push('DATE(os.created_at) >= ?');
-      valores.push(inicio);
+      where.push('DATE(os.created_at) >= ?');
+      params.push(inicio);
     }
 
+    // 🔹 Filtro por data final
     if (fim) {
-      filtros.push('DATE(os.created_at) <= ?');
-      valores.push(fim);
+      where.push('DATE(os.created_at) <= ?');
+      params.push(fim);
     }
 
-    let where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : '';
+    const whereSQL = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
-    const query = `
+    const [rows] = await db.query(`
       SELECT 
         os.id,
         os.descricao,
@@ -335,11 +326,10 @@ app.get('/ordens', autenticado, async (req, res) => {
       FROM ordens_servico os
       JOIN notas n ON n.id = os.nota_id
       JOIN usuarios u ON u.id = os.admin_id
-      ${where}
+      ${whereSQL}
       ORDER BY os.created_at DESC
-    `;
+    `, params);
 
-    const [rows] = await db.query(query, valores);
     res.json(rows);
 
   } catch (err) {
@@ -347,6 +337,7 @@ app.get('/ordens', autenticado, async (req, res) => {
     res.status(500).json({ erro: 'Erro ao buscar ordens' });
   }
 });
+
 
 
 //------------------------------------------------------------
@@ -383,7 +374,7 @@ app.put('/ordens/:id/status', autenticado, somenteAdmin, async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    const statusValidos = ['aberta', 'em andamento', 'concluida'];
+    const statusValidos = ['aberta', 'em andamento', 'encerrada'];
 
     if (!statusValidos.includes(status)) {
         return res.status(400).json({ mensagem: 'Status inválido' });
@@ -397,11 +388,11 @@ app.put('/ordens/:id/status', autenticado, somenteAdmin, async (req, res) => {
         );
 
         // 🔗 SE A ORDEM FOR CONCLUÍDA → FECHA A NOTA
-        if (status === 'concluida') {
+        if (status === 'encerrada') {
             await db.query(`
                 UPDATE notas n
                 JOIN ordens_servico os ON os.nota_id = n.id
-                SET n.status = 'concluida'
+                SET n.status = 'encerrada'
                 WHERE os.id = ?
             `, [id]);
         }
