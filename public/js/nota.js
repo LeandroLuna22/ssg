@@ -41,7 +41,7 @@ fetch(`/notas/${id}`)
     document.getElementById('titulo').innerText = nota.titulo;
     document.getElementById('descricao').innerText = nota.descricao;
     document.getElementById('status').innerText = nota.status;
-    document.getElementById('autor').innerText = nota.nome;
+    document.getElementById('autor').innerText = nota.autor;
 
     if (nota.imagem) {
       const img = document.getElementById('imagem');

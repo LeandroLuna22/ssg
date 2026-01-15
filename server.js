@@ -115,6 +115,37 @@ app.post(
 );
 
 // ======================================================
+// 🔍 BUSCAR NOTA POR ID (COM AUTOR)
+// ======================================================
+app.get('/notas/:id', autenticado, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [rows] = await db.query(`
+  SELECT 
+    n.*,
+    u.nome AS autor
+  FROM notas n
+  JOIN usuarios u ON u.id = n.usuario_id
+  WHERE n.id = ?
+`, [id]);
+
+
+    if (rows.length === 0) {
+      return res.status(404).json({ erro: 'Nota não encontrada' });
+    }
+
+    res.json(rows[0]);
+
+  } catch (error) {
+    console.error('Erro ao buscar nota:', error);
+    res.status(500).json({ erro: 'Erro ao buscar nota' });
+  }
+});
+
+
+
+// ======================================================
 // 📋 LISTAR NOTAS (com filtro por status e data)
 // ======================================================
 app.get('/notas', autenticado, async (req, res) => {
@@ -173,84 +204,38 @@ app.get('/notas', autenticado, async (req, res) => {
 });
 
 // ======================================================
-// 📋 LISTAR NOTAS (COM FILTRO)
-// ======================================================
-app.get('/notas', autenticado, async (req, res) => {
-  try {
-    const { status, inicio, fim } = req.query;
-
-    let where = [];
-    let params = [];
-
-    // 🔹 REGRA: notas encerradas só aparecem se filtrar
-    if (status) {
-      where.push('n.status = ?');
-      params.push(status);
-    } else {
-      where.push("n.status != 'encerrada'");
-    }
-
-    // 🔹 Filtro por data inicial
-    if (inicio) {
-      where.push('DATE(n.criada_em) >= ?');
-      params.push(inicio);
-    }
-
-    // 🔹 Filtro por data final
-    if (fim) {
-      where.push('DATE(n.criada_em) <= ?');
-      params.push(fim);
-    }
-
-    // 🔐 Usuário comum só vê notas abertas
-    if (req.session.usuario.tipo !== 'admin') {
-      where.push("n.status = 'aberta'");
-    }
-
-    const whereSQL = where.length ? `WHERE ${where.join(' AND ')}` : '';
-
-    const [rows] = await db.query(`
-      SELECT n.*, u.nome
-      FROM notas n
-      JOIN usuarios u ON u.id = n.usuario_id
-      ${whereSQL}
-      ORDER BY n.criada_em DESC
-    `, params);
-
-    res.json(rows);
-
-  } catch (error) {
-    console.error('Erro ao listar notas:', error);
-    res.status(500).json({ mensagem: 'Erro ao buscar notas.' });
-  }
-});
-
-
-// ======================================================
 // 🔄 ATUALIZAR STATUS DA NOTA (ADMIN)
 // ======================================================
-app.put('/notas/:id/status', autenticado, somenteAdmin, async (req, res) => {
+app.put('/notas/:id/status', autenticado, async (req, res) => {
+  try {
     const { id } = req.params;
     const { status } = req.body;
 
-    const statusValidos = ['aberta', 'em andamento', 'concluida'];
+    // 🔒 Verifica se existe ordem ENCERRADA para esta nota
+    const [ordens] = await db.query(`
+      SELECT id 
+      FROM ordens_servico 
+      WHERE nota_id = ? AND status = 'encerrada'
+    `, [id]);
 
-    if (!statusValidos.includes(status)) {
-        return res.status(400).json({ mensagem: 'Status inválido' });
+    if (ordens.length > 0) {
+      return res.status(403).json({
+        mensagem: 'Não é possível alterar a nota: existe ordem de serviço encerrada.'
+      });
     }
 
-    try {
-        await db.query(
-            'UPDATE notas SET status = ? WHERE id = ?',
-            [status, id]
-        );
+    // ✅ Pode atualizar
+    await db.query(
+      'UPDATE notas SET status = ? WHERE id = ?',
+      [status, id]
+    );
 
-        res.json({ mensagem: 'Status atualizado com sucesso' });
+    res.json({ mensagem: 'Status da nota atualizado com sucesso' });
 
-    } catch (error) {
-        console.error('Erro ao atualizar status:', error);
-        res.status(500).json({ mensagem: 'Erro ao atualizar status' });
-    }
+  } catch (error) {
+    console.error('Erro ao atualizar status da nota:', error);
+    res.status(500).json({ mensagem: 'Erro ao atualizar status da nota' });
+  }
 });
 
 //🔹 BUSCAR ORDEM POR NOTA (nota.html usa isso)
@@ -325,7 +310,7 @@ app.get('/ordens', autenticado, async (req, res) => {
       where.push('os.status = ?');
       params.push(status);
     } else {
-      where.push("os.status != 'concluida'");
+      where.push("os.status != 'encerrada'");
     }
 
     // 🔹 Filtro por data inicial
