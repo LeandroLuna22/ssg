@@ -173,30 +173,58 @@ app.get('/notas', autenticado, async (req, res) => {
 });
 
 // ======================================================
-// 📄 BUSCAR NOTA POR ID
+// 📋 LISTAR NOTAS (COM FILTRO)
 // ======================================================
-app.get('/notas/:id', autenticado, async (req, res) => {
-    const { id } = req.params;
+app.get('/notas', autenticado, async (req, res) => {
+  try {
+    const { status, inicio, fim } = req.query;
 
-    try {
-        const [rows] = await db.query(`
-            SELECT notas.*, usuarios.nome
-            FROM notas
-            JOIN usuarios ON usuarios.id = notas.usuario_id
-            WHERE notas.id = ?
-        `, [id]);
+    let where = [];
+    let params = [];
 
-        if (rows.length === 0) {
-            return res.status(404).json({ mensagem: 'Nota não encontrada' });
-        }
-
-        res.json(rows[0]);
-
-    } catch (error) {
-        console.error('Erro ao buscar nota:', error);
-        res.status(500).json({ mensagem: 'Erro ao buscar nota' });
+    // 🔹 REGRA: notas encerradas só aparecem se filtrar
+    if (status) {
+      where.push('n.status = ?');
+      params.push(status);
+    } else {
+      where.push("n.status != 'encerrada'");
     }
+
+    // 🔹 Filtro por data inicial
+    if (inicio) {
+      where.push('DATE(n.criada_em) >= ?');
+      params.push(inicio);
+    }
+
+    // 🔹 Filtro por data final
+    if (fim) {
+      where.push('DATE(n.criada_em) <= ?');
+      params.push(fim);
+    }
+
+    // 🔐 Usuário comum só vê notas abertas
+    if (req.session.usuario.tipo !== 'admin') {
+      where.push("n.status = 'aberta'");
+    }
+
+    const whereSQL = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+    const [rows] = await db.query(`
+      SELECT n.*, u.nome
+      FROM notas n
+      JOIN usuarios u ON u.id = n.usuario_id
+      ${whereSQL}
+      ORDER BY n.criada_em DESC
+    `, params);
+
+    res.json(rows);
+
+  } catch (error) {
+    console.error('Erro ao listar notas:', error);
+    res.status(500).json({ mensagem: 'Erro ao buscar notas.' });
+  }
 });
+
 
 // ======================================================
 // 🔄 ATUALIZAR STATUS DA NOTA (ADMIN)
