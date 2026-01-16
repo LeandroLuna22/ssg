@@ -143,65 +143,62 @@ app.get('/notas/:id', autenticado, async (req, res) => {
   }
 });
 
-
-
 // ======================================================
-// 📋 LISTAR NOTAS (com filtro por status e data)
+// 📋 LISTAR NOTAS (PADRÃO + FILTRO)
 // ======================================================
 app.get('/notas', autenticado, async (req, res) => {
-    try {
-        const { status, inicio, fim } = req.query;
+  try {
+    const { status, inicio, fim } = req.query;
 
-        let filtros = [];
-        let valores = [];
+    let where = [];
+    let params = [];
 
-        // 👤 Usuário comum
-        if (req.session.usuario.tipo !== 'admin') {
-            if (status) {
-                filtros.push('notas.status = ?');
-                valores.push(status);
-            } else {
-                // padrão: só abertas
-                filtros.push("notas.status = 'aberta'");
-            }
-        } 
-        // 👑 Admin
-        else {
-            if (status) {
-                filtros.push('notas.status = ?');
-                valores.push(status);
-            }
-        }
-
-        // 📅 Filtro por data
-        if (inicio) {
-            filtros.push('DATE(notas.criada_em) >= ?');
-            valores.push(inicio);
-        }
-
-        if (fim) {
-            filtros.push('DATE(notas.criada_em) <= ?');
-            valores.push(fim);
-        }
-
-        let where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : '';
-
-        const query = `
-            SELECT notas.*, usuarios.nome
-            FROM notas
-            JOIN usuarios ON usuarios.id = notas.usuario_id
-            ${where}
-            ORDER BY notas.criada_em DESC
-        `;
-
-        const [rows] = await db.query(query, valores);
-        res.json(rows);
-
-    } catch (error) {
-        console.error('Erro ao listar notas:', error);
-        res.status(500).json({ mensagem: 'Erro ao buscar notas.' });
+    // 🔹 REGRA DE STATUS
+    if (status) {
+      // filtro explícito
+      where.push('n.status = ?');
+      params.push(status);
+    } else {
+      // padrão: abertas + em andamento
+      where.push("n.status IN ('aberta', 'em andamento')");
     }
+
+    // 🔐 Usuário comum nunca vê encerradas
+    if (req.session.usuario.tipo !== 'admin') {
+      where.push("n.status IN ('aberta', 'em andamento')");
+    }
+
+    // 📅 Filtro por data
+    if (inicio) {
+      where.push('DATE(n.criada_em) >= ?');
+      params.push(inicio);
+    }
+
+    if (fim) {
+      where.push('DATE(n.criada_em) <= ?');
+      params.push(fim);
+    }
+
+    const whereSQL = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+    const [rows] = await db.query(`
+      SELECT 
+        n.*,
+        u.nome AS autor
+      FROM notas n
+      JOIN usuarios u ON u.id = n.usuario_id
+      ${whereSQL}
+      ORDER BY n.criada_em DESC
+    `, params);
+
+    res.json(rows);
+
+  } catch (error) {
+    console.error('Erro ao listar notas:', error);
+    res.status(500).json({ mensagem: 'Erro ao buscar notas.' });
+  }
 });
+
 
 // ======================================================
 // 🔄 ATUALIZAR STATUS DA NOTA (ADMIN)
