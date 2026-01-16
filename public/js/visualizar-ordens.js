@@ -51,51 +51,29 @@ function renderizarOrdens(ordens) {
 
   ordens.forEach(ordem => {
     const item = document.createElement('div');
-    item.classList.add('item-lista');
+    item.classList.add('item-lista', 'clicavel');
 
     item.innerHTML = `
-      <details class="accordion-ordem">
-        <summary>
-          <strong>${ordem.nota_titulo}</strong>
-          <span class="status ${ordem.status}">${ordem.status}</span>
-          <small>${new Date(ordem.created_at).toLocaleDateString()}</small>
-        </summary>
+      <div class="linha-principal">
+        <strong>${ordem.nota_titulo}</strong>
+        <span class="status ${ordem.status}">${ordem.status}</span>
+        <small>${new Date(ordem.created_at).toLocaleDateString()}</small>
+      </div>
 
-        <div class="conteudo-ordem">
-          <p>${ordem.descricao}</p>
-
-          ${
-            ordem.imagem
-              ? `<img src="/uploads/${ordem.imagem}" style="max-width:300px">`
-              : ''
-          }
-
-          <p><small>Administrador: ${ordem.admin_nome}</small></p>
-
-          <label>Status da ordem:</label>
-          <select class="statusOrdem">
-            <option value="aberta">Aberta</option>
-            <option value="em andamento">Em andamento</option>
-            <option value="encerrada">Encerrada</option>
-          </select>
-
-          <button class="btnAtualizarOrdem">Atualizar Status</button>
-        </div>
-      </details>
+      <div class="linha-secundaria">
+        <small>Administrador: ${ordem.admin_nome ?? '-'}</small>
+      </div>
     `;
 
-    // 🔹 Preencher status atual
-    const select = item.querySelector('.statusOrdem');
-    select.value = ordem.status;
-
-    // 🔹 Atualizar status
-    item.querySelector('.btnAtualizarOrdem').addEventListener('click', () => {
-      atualizarStatusOrdem(ordem.id, select.value);
+    // 👉 Clique abre página da ordem
+    item.addEventListener('click', () => {
+      window.location.href = `ordem.html?id=${ordem.id}`;
     });
 
     lista.appendChild(item);
   });
 }
+
 
 // ======================================================
 // 🔹 ATUALIZAR STATUS DA ORDEM
