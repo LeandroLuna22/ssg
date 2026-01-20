@@ -415,6 +415,58 @@ app.put('/ordens/:id/status', autenticado, somenteAdmin, async (req, res) => {
     }
 });
 
+// ======================================================
+// ➕ ADICIONAR HISTÓRICO À ORDEM
+// ======================================================
+app.post('/ordens/:id/historico', autenticado, somenteAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { descricao } = req.body;
+    const autorId = req.session.usuario.id;
+
+    if (!descricao || !descricao.trim()) {
+      return res.status(400).json({ mensagem: 'Descrição é obrigatória.' });
+    }
+
+    await db.query(
+      'INSERT INTO ordem_historico (ordem_id, descricao, autor_id) VALUES (?, ?, ?)',
+      [id, descricao, autorId]
+    );
+
+    res.json({ mensagem: 'Atualização adicionada com sucesso.' });
+
+  } catch (error) {
+    console.error('Erro ao inserir histórico:', error);
+    res.status(500).json({ mensagem: 'Erro ao inserir histórico.' });
+  }
+});
+
+// ======================================================
+// 📜 LISTAR HISTÓRICO DA ORDEM
+// ======================================================
+app.get('/ordens/:id/historico', autenticado, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [rows] = await db.query(`
+      SELECT 
+        h.id,
+        h.descricao,
+        h.criada_em,
+        u.nome AS autor
+      FROM ordem_historico h
+      JOIN usuarios u ON u.id = h.autor_id
+      WHERE h.ordem_id = ?
+      ORDER BY h.criada_em DESC
+    `, [id]);
+
+    res.json(rows);
+
+  } catch (error) {
+    console.error('Erro ao buscar histórico:', error);
+    res.status(500).json({ mensagem: 'Erro ao buscar histórico.' });
+  }
+});
 
 // ======================================================
 // 📝 CADASTRO (ADMIN)
