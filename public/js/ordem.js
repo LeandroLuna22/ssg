@@ -17,6 +17,18 @@ fetch(`/ordens/${ordemId}`)
     document.getElementById('voltarNota').href =
       `nota.html?id=${ordem.nota_id}`;
 
+      // 🔒 Se ordem encerrada, bloqueia interações
+if (ordem.status === 'encerrada') {
+  document.getElementById('formHistorico').style.display = 'none';
+
+  const aviso = document.createElement('p');
+  aviso.classList.add('aviso-encerrada');
+  aviso.innerText = 'A ordem está encerrada. Apenas leitura.';
+
+  document.getElementById('historicoLista').before(aviso);
+}
+
+
     // 🔹 Preenche o select com o status atual
     const select = document.getElementById('novoStatus');
     select.value = ordem.status;

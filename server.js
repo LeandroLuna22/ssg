@@ -425,30 +425,49 @@ app.put('/ordens/:id/status', autenticado, async (req, res) => {
 
 
 // ======================================================
-// ➕ ADICIONAR HISTÓRICO À ORDEM
+// 📝 INSERIR DESCRITIVO NA ORDEM (BLOQUEIA SE ENCERRADA)
 // ======================================================
-app.post('/ordens/:id/historico', autenticado, somenteAdmin, async (req, res) => {
+app.post('/ordens/:id/historico', autenticado, async (req, res) => {
   try {
     const { id } = req.params;
     const { descricao } = req.body;
-    const autorId = req.session.usuario.id;
 
-    if (!descricao || !descricao.trim()) {
-      return res.status(400).json({ mensagem: 'Descrição é obrigatória.' });
+    if (!descricao) {
+      return res.status(400).json({ mensagem: 'Descrição obrigatória.' });
     }
 
-    await db.query(
-      'INSERT INTO ordem_historico (ordem_id, descricao, autor_id) VALUES (?, ?, ?)',
-      [id, descricao, autorId]
+    // 🔒 Verifica status da ordem
+    const [[ordem]] = await db.query(
+      'SELECT status FROM ordens_servico WHERE id = ?',
+      [id]
     );
 
-    res.json({ mensagem: 'Atualização adicionada com sucesso.' });
+    if (!ordem) {
+      return res.status(404).json({ mensagem: 'Ordem não encontrada.' });
+    }
+
+    if (ordem.status === 'encerrada') {
+      return res.status(403).json({
+        mensagem: 'Ordem encerrada. Não é possível adicionar descritivos.'
+      });
+    }
+
+    // 📝 Insere histórico
+    await db.query(
+      `INSERT INTO ordens_historico 
+       (ordem_id, descricao, autor_id) 
+       VALUES (?, ?, ?)`,
+      [id, descricao, req.session.usuario.id]
+    );
+
+    res.json({ mensagem: 'Descritivo adicionado com sucesso.' });
 
   } catch (error) {
     console.error('Erro ao inserir histórico:', error);
     res.status(500).json({ mensagem: 'Erro ao inserir histórico.' });
   }
 });
+
 
 // ======================================================
 // 📜 LISTAR HISTÓRICO DA ORDEM
