@@ -379,41 +379,59 @@ app.get('/ordens/:id', async (req, res) => {
   }
 });
 
-// 🔄 ATUALIZAR STATUS DA ORDEM (ADMIN)
+// ======================================================
+// 🔄 ATUALIZAR STATUS DA ORDEM
+// ======================================================
 app.put('/ordens/:id/status', autenticado, somenteAdmin, async (req, res) => {
+  try {
     const { id } = req.params;
     const { status } = req.body;
 
-    const statusValidos = ['aberta', 'em andamento', 'encerrada'];
+    // 🔹 Busca ordem
+    const [ordens] = await db.query(
+      'SELECT status, nota_id FROM ordens_servico WHERE id = ?',
+      [id]
+    );
 
-    if (!statusValidos.includes(status)) {
-        return res.status(400).json({ mensagem: 'Status inválido' });
+    if (ordens.length === 0) {
+      return res.status(404).json({ mensagem: 'Ordem não encontrada' });
     }
 
-    try {
-        // Atualiza status da ordem
-        await db.query(
-            'UPDATE ordens_servico SET status = ? WHERE id = ?',
-            [status, id]
-        );
+    const ordem = ordens[0];
 
-        // 🔗 SE A ORDEM FOR CONCLUÍDA → FECHA A NOTA
-        if (status === 'encerrada') {
-            await db.query(`
-                UPDATE notas n
-                JOIN ordens_servico os ON os.nota_id = n.id
-                SET n.status = 'encerrada'
-                WHERE os.id = ?
-            `, [id]);
-        }
-
-        res.json({ mensagem: 'Status da ordem atualizado com sucesso' });
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ mensagem: 'Erro ao atualizar ordem' });
+    // 🔒 Regra: não altera se já estiver encerrada
+    if (ordem.status === 'encerrada') {
+      return res.status(403).json({
+        mensagem: 'Esta ordem já está encerrada e não pode ser alterada'
+      });
     }
+
+    // 🔒 Regra: não altera se nota já estiver encerrada
+    const [notas] = await db.query(
+      'SELECT status FROM notas WHERE id = ?',
+      [ordem.nota_id]
+    );
+
+    if (notas.length && notas[0].status === 'encerrada') {
+      return res.status(403).json({
+        mensagem: 'A nota vinculada já está encerrada'
+      });
+    }
+
+    // 🔹 Atualiza status da ordem
+    await db.query(
+      'UPDATE ordens_servico SET status = ? WHERE id = ?',
+      [status, id]
+    );
+
+    res.json({ mensagem: 'Status da ordem atualizado com sucesso' });
+
+  } catch (err) {
+    console.error('Erro ao atualizar status da ordem:', err);
+    res.status(500).json({ erro: 'Erro ao atualizar status da ordem' });
+  }
 });
+
 
 // ======================================================
 // ➕ ADICIONAR HISTÓRICO À ORDEM

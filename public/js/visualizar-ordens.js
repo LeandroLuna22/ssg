@@ -74,7 +74,6 @@ function renderizarOrdens(ordens) {
   });
 }
 
-
 // ======================================================
 // 🔹 ATUALIZAR STATUS DA ORDEM
 // ======================================================
@@ -84,16 +83,24 @@ function atualizarStatusOrdem(id, status) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status })
   })
-    .then(res => res.json())
-    .then(data => {
+    .then(async res => {
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.mensagem || 'Erro ao atualizar status');
+        return;
+      }
+
       alert(data.mensagem);
-      carregarOrdens(); // 🔄 recarrega mantendo regra padrão
+      carregarOrdens();
+
     })
     .catch(err => {
       console.error(err);
       alert('Erro ao atualizar status da ordem');
     });
 }
+
 
 
 
