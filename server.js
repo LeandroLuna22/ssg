@@ -144,7 +144,7 @@ app.get('/notas/:id', autenticado, async (req, res) => {
 });
 
 // ======================================================
-// 📋 LISTAR NOTAS (PADRÃO + FILTRO)
+// 📋 LISTAR NOTAS (REGRA FINAL)
 // ======================================================
 app.get('/notas', autenticado, async (req, res) => {
   try {
@@ -153,27 +153,21 @@ app.get('/notas', autenticado, async (req, res) => {
     let where = [];
     let params = [];
 
-    // 🔹 REGRA DE STATUS
+    // 🔹 REGRA: encerradas só aparecem se filtrar
     if (status) {
-      // filtro explícito
       where.push('n.status = ?');
       params.push(status);
     } else {
-      // padrão: abertas + em andamento
       where.push("n.status IN ('aberta', 'em andamento')");
     }
 
-    // 🔐 Usuário comum nunca vê encerradas
-    if (req.session.usuario.tipo !== 'admin') {
-      where.push("n.status IN ('aberta', 'em andamento')");
-    }
-
-    // 📅 Filtro por data
+    // 📅 Filtro por data inicial
     if (inicio) {
       where.push('DATE(n.criada_em) >= ?');
       params.push(inicio);
     }
 
+    // 📅 Filtro por data final
     if (fim) {
       where.push('DATE(n.criada_em) <= ?');
       params.push(fim);
@@ -198,6 +192,7 @@ app.get('/notas', autenticado, async (req, res) => {
     res.status(500).json({ mensagem: 'Erro ao buscar notas.' });
   }
 });
+
 
 
 // ======================================================
@@ -382,53 +377,49 @@ app.get('/ordens/:id', async (req, res) => {
 // ======================================================
 // 🔄 ATUALIZAR STATUS DA ORDEM
 // ======================================================
-app.put('/ordens/:id/status', autenticado, somenteAdmin, async (req, res) => {
+app.put('/ordens/:id/status', autenticado, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
-    // 🔹 Busca ordem
-    const [ordens] = await db.query(
-      'SELECT status, nota_id FROM ordens_servico WHERE id = ?',
+    // 🔍 Busca ordem atual
+    const [ordemRows] = await db.query(
+      'SELECT * FROM ordens_servico WHERE id = ?',
       [id]
     );
 
-    if (ordens.length === 0) {
+    if (ordemRows.length === 0) {
       return res.status(404).json({ mensagem: 'Ordem não encontrada' });
     }
 
-    const ordem = ordens[0];
+    const ordem = ordemRows[0];
 
-    // 🔒 Regra: não altera se já estiver encerrada
+    // 🔒 Se já encerrada, não permite mudar nada
     if (ordem.status === 'encerrada') {
-      return res.status(403).json({
-        mensagem: 'Esta ordem já está encerrada e não pode ser alterada'
+      return res.status(400).json({
+        mensagem: 'Esta ordem já está encerrada e não pode ser alterada.'
       });
     }
 
-    // 🔒 Regra: não altera se nota já estiver encerrada
-    const [notas] = await db.query(
-      'SELECT status FROM notas WHERE id = ?',
-      [ordem.nota_id]
-    );
-
-    if (notas.length && notas[0].status === 'encerrada') {
-      return res.status(403).json({
-        mensagem: 'A nota vinculada já está encerrada'
-      });
-    }
-
-    // 🔹 Atualiza status da ordem
+    // 🔄 Atualiza status da ordem
     await db.query(
       'UPDATE ordens_servico SET status = ? WHERE id = ?',
       [status, id]
     );
 
-    res.json({ mensagem: 'Status da ordem atualizado com sucesso' });
+    // 🧩 REGRA: se a ordem foi encerrada, encerra a nota também
+    if (status === 'encerrada') {
+      await db.query(
+        'UPDATE notas SET status = ? WHERE id = ?',
+        ['encerrada', ordem.nota_id]
+      );
+    }
 
-  } catch (err) {
-    console.error('Erro ao atualizar status da ordem:', err);
-    res.status(500).json({ erro: 'Erro ao atualizar status da ordem' });
+    res.json({ mensagem: 'Status da ordem atualizado com sucesso.' });
+
+  } catch (error) {
+    console.error('Erro ao atualizar status da ordem:', error);
+    res.status(500).json({ mensagem: 'Erro interno ao atualizar ordem.' });
   }
 });
 

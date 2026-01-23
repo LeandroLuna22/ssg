@@ -41,6 +41,19 @@ fetch(`/notas/${id}`)
     document.getElementById('titulo').innerText = nota.titulo;
     document.getElementById('descricao').innerText = nota.descricao;
     document.getElementById('status').innerText = nota.status;
+
+    // 🔒 Se a nota estiver encerrada, bloqueia ações
+if (nota.status === 'encerrada') {
+  const areaStatus = document.getElementById('areaStatusNota');
+  if (areaStatus) areaStatus.style.display = 'none';
+
+  const formComentario = document.getElementById('formComentario');
+  if (formComentario) formComentario.style.display = 'none';
+
+  const btnCriarOrdem = document.getElementById('btnCriarOrdem');
+  if (btnCriarOrdem) btnCriarOrdem.disabled = true;
+}
+
     document.getElementById('autor').innerText = nota.autor;
 
     if (nota.imagem) {

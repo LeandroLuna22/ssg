@@ -119,5 +119,3 @@ document
     document.getElementById('descricaoHistorico').value = '';
     carregarHistorico(ordemId);
   });
-
-
