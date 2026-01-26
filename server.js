@@ -377,7 +377,7 @@ app.get('/ordens/:id', async (req, res) => {
 // ======================================================
 // 🔄 ATUALIZAR STATUS DA ORDEM
 // ======================================================
-app.put('/ordens/:id/status', autenticado, async (req, res) => {
+app.put('/ordens/:id/status', autenticado, somenteAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -448,7 +448,14 @@ app.post('/ordens/:id/historico', autenticado, async (req, res) => {
 
     if (ordem.status === 'encerrada') {
       return res.status(403).json({
-        mensagem: 'Ordem encerrada. Não é possível adicionar descritivos.'
+        mensagem: 'Ordem encerrada. Apenas visualização.'
+      });
+    }
+
+    // 🔒 Usuário comum não pode inserir histórico
+    if (req.session.usuario.tipo !== 'admin') {
+    return res.status(403).json({
+    mensagem: 'Apenas administradores podem inserir descritivos.'
       });
     }
 
