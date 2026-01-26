@@ -6,6 +6,8 @@ import bcrypt from 'bcrypt';
 import session from 'express-session';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
+import sharp from 'sharp';
 
 const app = express();
 
@@ -20,37 +22,32 @@ app.use(express.static('public'));
 // 🔐 SESSÃO
 // ======================================================
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'ssg_secret',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        httpOnly: true,
-        secure: false
-    }
+  secret: process.env.SESSION_SECRET || 'ssg_secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { httpOnly: true, secure: false }
 }));
 
 // ======================================================
 // 🗄️ BANCO DE DADOS
 // ======================================================
 const db = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    charset: 'utf8mb4'
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  charset: 'utf8mb4'
 });
 
 // ======================================================
-// 📂 MULTER (ANTES DAS ROTAS)
+// 📂 MULTER
 // ======================================================
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'public/uploads');
-    },
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname);
-        cb(null, Date.now() + ext);
-    }
+  destination: (req, file, cb) => cb(null, 'public/uploads/tmp'),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, Date.now() + ext);
+  }
 });
 
 const upload = multer({ storage });
@@ -59,77 +56,119 @@ const upload = multer({ storage });
 // 🔐 MIDDLEWARES DE SEGURANÇA
 // ======================================================
 function autenticado(req, res, next) {
-    if (!req.session.usuario) {
-        return res.status(401).json({ mensagem: 'Não autenticado' });
-    }
-    next();
+  if (!req.session.usuario) {
+    return res.status(401).json({ mensagem: 'Não autenticado' });
+  }
+  next();
 }
 
 function somenteAdmin(req, res, next) {
-    if (req.session.usuario.tipo !== 'admin') {
-        return res.status(403).json({ mensagem: 'Acesso restrito ao administrador' });
-    }
-    next();
+  if (req.session.usuario.tipo !== 'admin') {
+    return res.status(403).json({ mensagem: 'Acesso restrito ao administrador' });
+  }
+  next();
 }
 
 // ======================================================
 // 👤 USUÁRIO LOGADO
 // ======================================================
 app.get('/user', autenticado, (req, res) => {
-    res.json({
-        nome: req.session.usuario.nome,
-        tipo: req.session.usuario.tipo
-    });
+  res.json({
+    nome: req.session.usuario.nome,
+    tipo: req.session.usuario.tipo
+  });
 });
 
 // ======================================================
-// 📝 CRIAR NOTA
+// 📝 CRIAR NOTA (SEM COMPRESSÃO AQUI)
+// ======================================================
+app.post('/criar-nota', autenticado, async (req, res) => {
+  try {
+    const { titulo, descricao } = req.body;
+    const usuarioId = req.session.usuario.id;
+
+    if (!titulo || !descricao) {
+      return res.status(400).json({ mensagem: 'Título e descrição são obrigatórios.' });
+    }
+
+    await db.query(
+      `INSERT INTO notas (usuario_id, titulo, descricao)
+       VALUES (?, ?, ?)`,
+      [usuarioId, titulo, descricao]
+    );
+
+    res.json({ mensagem: 'Nota criada com sucesso!' });
+
+  } catch (error) {
+    console.error('Erro ao criar nota:', error);
+    res.status(500).json({ mensagem: 'Erro ao criar nota.' });
+  }
+});
+
+// ======================================================
+// 📷 ANEXAR IMAGEM À NOTA (COM BLOQUEIO + SHARP)
 // ======================================================
 app.post(
-    '/criar-nota',
-    autenticado,
-    upload.single('imagem'),
-    async (req, res) => {
-        try {
-            const { titulo, descricao } = req.body;
-            const usuarioId = req.session.usuario.id;
-            const imagem = req.file ? req.file.filename : null;
+  '/notas/:id/imagem',
+  autenticado,
+  upload.single('imagem'),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const inputPath = req.file.path;
+      const outputPath = `public/uploads/nota_${id}.jpg`;
 
-            if (!titulo || !descricao) {
-                return res.status(400).json({ mensagem: 'Título e descrição são obrigatórios.' });
-            }
+      // 🔒 Verifica se nota existe e status
+      const [[nota]] = await db.query(
+        'SELECT status FROM notas WHERE id = ?',
+        [id]
+      );
 
-            await db.query(
-                `INSERT INTO notas (usuario_id, titulo, descricao, imagem)
-                 VALUES (?, ?, ?, ?)`,
-                [usuarioId, titulo, descricao, imagem]
-            );
+      if (!nota) {
+        fs.unlinkSync(inputPath);
+        return res.status(404).json({ mensagem: 'Nota não encontrada.' });
+      }
 
-            res.json({ mensagem: 'Nota criada com sucesso!' });
+      if (nota.status === 'encerrada') {
+        fs.unlinkSync(inputPath);
+        return res.status(403).json({ mensagem: 'Nota encerrada. Upload bloqueado.' });
+      }
 
-        } catch (error) {
-            console.error('Erro ao criar nota:', error);
-            res.status(500).json({ mensagem: 'Erro ao criar nota.' });
-        }
+      // 🗜️ Redimensiona e comprime
+      await sharp(inputPath)
+        .resize({ width: 1280 })
+        .jpeg({ quality: 75 })
+        .toFile(outputPath);
+
+      fs.unlinkSync(inputPath);
+
+      await db.query(
+        'UPDATE notas SET imagem = ? WHERE id = ?',
+        [`uploads/nota_${id}.jpg`, id]
+      );
+
+      res.json({ mensagem: 'Imagem anexada com sucesso.' });
+
+    } catch (err) {
+      console.error('Erro ao processar imagem:', err);
+      res.status(500).json({ mensagem: 'Erro ao anexar imagem.' });
     }
+  }
 );
 
 // ======================================================
-// 🔍 BUSCAR NOTA POR ID (COM AUTOR)
+// 🔍 BUSCAR NOTA POR ID
 // ======================================================
 app.get('/notas/:id', autenticado, async (req, res) => {
   try {
     const { id } = req.params;
 
     const [rows] = await db.query(`
-  SELECT 
-    n.*,
-    u.nome AS autor
-  FROM notas n
-  JOIN usuarios u ON u.id = n.usuario_id
-  WHERE n.id = ?
-`, [id]);
-
+      SELECT n.*, u.nome AS autor
+      FROM notas n
+      JOIN usuarios u ON u.id = n.usuario_id
+      WHERE n.id = ?
+    `, [id]);
 
     if (rows.length === 0) {
       return res.status(404).json({ erro: 'Nota não encontrada' });
@@ -144,7 +183,7 @@ app.get('/notas/:id', autenticado, async (req, res) => {
 });
 
 // ======================================================
-// 📋 LISTAR NOTAS (REGRA FINAL)
+// 📋 LISTAR NOTAS
 // ======================================================
 app.get('/notas', autenticado, async (req, res) => {
   try {
@@ -153,7 +192,6 @@ app.get('/notas', autenticado, async (req, res) => {
     let where = [];
     let params = [];
 
-    // 🔹 REGRA: encerradas só aparecem se filtrar
     if (status) {
       where.push('n.status = ?');
       params.push(status);
@@ -161,13 +199,11 @@ app.get('/notas', autenticado, async (req, res) => {
       where.push("n.status IN ('aberta', 'em andamento')");
     }
 
-    // 📅 Filtro por data inicial
     if (inicio) {
       where.push('DATE(n.criada_em) >= ?');
       params.push(inicio);
     }
 
-    // 📅 Filtro por data final
     if (fim) {
       where.push('DATE(n.criada_em) <= ?');
       params.push(fim);
@@ -176,9 +212,7 @@ app.get('/notas', autenticado, async (req, res) => {
     const whereSQL = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
     const [rows] = await db.query(`
-      SELECT 
-        n.*,
-        u.nome AS autor
+      SELECT n.*, u.nome AS autor
       FROM notas n
       JOIN usuarios u ON u.id = n.usuario_id
       ${whereSQL}
@@ -193,17 +227,14 @@ app.get('/notas', autenticado, async (req, res) => {
   }
 });
 
-
-
 // ======================================================
-// 🔄 ATUALIZAR STATUS DA NOTA (ADMIN)
+// 🔄 ATUALIZAR STATUS DA NOTA
 // ======================================================
 app.put('/notas/:id/status', autenticado, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
-    // 🔒 Verifica se existe ordem ENCERRADA para esta nota
     const [ordens] = await db.query(`
       SELECT id 
       FROM ordens_servico 
@@ -216,7 +247,6 @@ app.put('/notas/:id/status', autenticado, async (req, res) => {
       });
     }
 
-    // ✅ Pode atualizar
     await db.query(
       'UPDATE notas SET status = ? WHERE id = ?',
       [status, id]
