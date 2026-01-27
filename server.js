@@ -43,7 +43,7 @@ const db = mysql.createPool({
 // 📂 MULTER
 // ======================================================
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'public/uploads/tmp'),
+  destination: (req, file, cb) => cb(null, 'public/uploads'),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
     cb(null, Date.now() + ext);
@@ -80,9 +80,9 @@ app.get('/user', autenticado, (req, res) => {
 });
 
 // ======================================================
-// 📝 CRIAR NOTA (SEM COMPRESSÃO AQUI)
+// 📝 CRIAR NOTA (COM COMPRESSÃO DA IMAGEM)
 // ======================================================
-app.post('/criar-nota', autenticado, async (req, res) => {
+app.post('/criar-nota', autenticado, upload.single('imagem'), async (req, res) => {
   try {
     const { titulo, descricao } = req.body;
     const usuarioId = req.session.usuario.id;
@@ -91,10 +91,27 @@ app.post('/criar-nota', autenticado, async (req, res) => {
       return res.status(400).json({ mensagem: 'Título e descrição são obrigatórios.' });
     }
 
+    let imagemPath = null;
+
+    if (req.file) {
+      const inputPath = req.file.path;
+      const outputFilename = `nota_${Date.now()}.jpg`;
+      const outputPath = `public/uploads/${outputFilename}`;
+
+      await sharp(inputPath)
+        .resize({ width: 1280 })
+        .jpeg({ quality: 75 })
+        .toFile(outputPath);
+
+      fs.unlinkSync(inputPath);
+
+      imagemPath = `/uploads/${outputFilename}`;
+    }
+
     await db.query(
-      `INSERT INTO notas (usuario_id, titulo, descricao)
-       VALUES (?, ?, ?)`,
-      [usuarioId, titulo, descricao]
+      `INSERT INTO notas (usuario_id, titulo, descricao, imagem)
+       VALUES (?, ?, ?, ?)`,
+      [usuarioId, titulo, descricao, imagemPath]
     );
 
     res.json({ mensagem: 'Nota criada com sucesso!' });
@@ -144,7 +161,7 @@ app.post(
 
       await db.query(
         'UPDATE notas SET imagem = ? WHERE id = ?',
-        [`uploads/nota_${id}.jpg`, id]
+        [`/uploads/nota_${id}.jpg`, id]
       );
 
       res.json({ mensagem: 'Imagem anexada com sucesso.' });
@@ -491,7 +508,7 @@ app.post('/ordens/:id/historico', autenticado, async (req, res) => {
 
     // 📝 Insere histórico
     await db.query(
-      `INSERT INTO ordens_historico 
+      `INSERT INTO ordem_historico 
        (ordem_id, descricao, autor_id) 
        VALUES (?, ?, ?)`,
       [id, descricao, req.session.usuario.id]

@@ -58,7 +58,7 @@ if (nota.status === 'encerrada') {
 
     if (nota.imagem) {
       const img = document.getElementById('imagem');
-      img.src = `/uploads/${nota.imagem}`;
+      img.src = nota.imagem;
       img.style.display = 'block';
     }
 
